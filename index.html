@@ -2140,7 +2140,7 @@ var QK='dex51_pubq';
 (function(){'use strict';
  var btn=document.getElementById('mic'),inp=document.getElementById('chatInput');
  var SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!btn||!inp)return;
- var on=false,rec=null,buf='',interim='',tm=null,paused=false,quiet=0,wd=null,SIL=+(localStorage.getItem('dex51_silence_ms')||0)||1800,BARGE=localStorage.getItem('dex51_barge')==='1',lastEnd=0,gate=false,gq=0,STOPL=localStorage.getItem('dex51_stoplisten')!=='0';
+ var on=false,rec=null,buf='',interim='',tm=null,paused=false,quiet=0,wd=null,SIL=+(localStorage.getItem('dex51_silence_ms')||0)||1800,BARGE=localStorage.getItem('dex51_barge')==='1',lastEnd=0,gate=false,gq=0,lastFin='',STOPL=localStorage.getItem('dex51_stoplisten')!=='0';
  function toast(t){try{var e=document.getElementById('toast');e.textContent=t;e.classList.add('show');setTimeout(function(){e.classList.remove('show')},2600)}catch(x){}}
  function speaking(){try{return !!(window.DEX_SPEAKING&&window.DEX_SPEAKING())}catch(e){return false}}
  function nz(t){return String(t||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim()}
@@ -2153,7 +2153,7 @@ var QK='dex51_pubq';
  function cutNow(){var l0=window.__dexLast;if(l0&&!l0.cut){var pr=null;try{pr=window.DEX_PROGRESS&&window.DEX_PROGRESS()}catch(e){}if(pr==null&&l0.t0)pr=(Date.now()-l0.t0)/(String(l0.t).length*70);l0.at=Math.max(0,Math.min(1,pr||0))}try{window.DEX_STOP&&window.DEX_STOP()}catch(e){}try{window.speechSynthesis&&window.speechSynthesis.cancel()}catch(e){}window.__dexCut=true;if(window.__dexLast)window.__dexLast.cut=true}
  function mark(){btn.classList.toggle('listening',on&&!paused);btn.classList.toggle('dfx-hold',on);btn.setAttribute('aria-pressed',on?'true':'false')}
  function shown(){inp.value=(buf+' '+interim).trim()}
- function flush(){clearTimeout(tm);tm=null;var t=(buf+' '+interim).trim();buf='';interim='';if(!t){inp.value='';return}
+ function flush(){clearTimeout(tm);tm=null;lastFin='';var t=(buf+' '+interim).trim();buf='';interim='';if(!t){inp.value='';return}
   inp.value='';var send=window.DEX40_SEND;if(typeof send==='function')send(t)}
  function arm(){clearTimeout(tm);tm=setTimeout(flush,SIL)}
  function stopRec(){var r=rec;rec=null;if(r){r.onend=null;r.onerror=null;r.onresult=null;try{r.abort()}catch(e){}}}
@@ -2166,7 +2166,11 @@ var QK='dex51_pubq';
     if(gate){var gt=nz(fin+' '+tmp);buf='';interim='';inp.value='';clearTimeout(tm);tm=null;if(speaking()&&STOPW.test(gt)){cutNow();lastEnd=Date.now()}return}
     if(!(BARGE&&speaking())&&Date.now()-lastEnd<7000&&echoLike(fin+' '+tmp)){interim='';return}
     if(BARGE&&speaking()){var v=barge(fin,tmp);if(v==='echo'){interim='';return}cutNow();if(v==='stop'){buf='';interim='';inp.value='';clearTimeout(tm);return}}
-    if(fin)buf=(buf+' '+fin).trim();interim=tmp.trim();shown();arm()};
+    if(fin){var fn=fin.trim(),pf=lastFin;
+     if(pf&&nz(fn).indexOf(nz(pf))===0&&nz(buf).slice(-nz(pf).length)===nz(pf)){buf=buf.slice(0,Math.max(0,buf.length-pf.length)).trim();buf=(buf+' '+fn).trim()}
+     else if(pf&&nz(pf).indexOf(nz(fn))===0&&nz(buf).slice(-nz(pf).length)===nz(pf)){/* rövidebb ismétlés: már megvan */}
+     else buf=(buf+' '+fn).trim();lastFin=fn}
+    interim=tmp.trim();shown();arm()};
    r.onerror=function(e){var er=e&&e.error;if(er==='not-allowed'||er==='service-not-allowed'){off();toast('A mikrofon nincs engedélyezve a böngészőben.')}
     else if(er==='network'&&!LOCALSTT&&'processLocally' in r){LOCALSTT=true;toast('Nincs net: a telefon helyi beszédfelismerését használom.')}
     else if(er==='language-not-supported'){LOCALSTT=false;try{if(SR.install)SR.install({langs:['hu-HU'],processLocally:true})}catch(x){}toast('Offline beszédfelismeréshez telepítsd a magyar hangcsomagot a telefonon (Beállítások → Nyelv/Hang), vagy kapcsolódj netre. Addig írva is működik.')}};
@@ -2530,7 +2534,13 @@ document.body.appendChild(prof);document.body.appendChild(menu);
   hud(function(x){var e=x.querySelector('.cm');if(!e)return;e.classList.toggle('on',chatOn&&ms.length>0);e.innerHTML='';if(!chatOn)return;ms.forEach(function(m){var sp=document.createElement('span');if(m.classList.contains('me'))sp.className='me';var tx=m.textContent.trim();sp.textContent=tx.length>120?tx.slice(0,117)+'…':tx;e.appendChild(sp)})})}
  function chatSet(on){chatOn=!!on;chatRender(true)}
  function feed(){if(G&&!G.paused&&!G.done&&(++fc%3===0))skRender();if(chatOn)chatRender()}
- function setWork(on){workOn=!!on;hud(function(x){var w=x.querySelector('.wk');w.hidden=!workOn;if(workOn&&!w.firstChild){var f=document.createElement('iframe');f.src=new URL(/\/dex\/[^\/]*$/.test(location.pathname)?'../work/index.html':'./work/index.html',location.href).href;f.setAttribute('loading','eager');f.onload=function(){try{var d=f.contentDocument;if(d){var st=d.createElement('style');st.textContent='html,body{background:transparent!important}.app,.app-shell{background:transparent!important}';d.head.appendChild(st)}}catch(e){}};w.appendChild(f)}else if(!workOn){w.innerHTML=''}})}
+ function workUrl(){return new URL(/\/dex\/[^\/]*$/.test(location.pathname)?'../work/index.html':'./work/index.html',location.href).href}
+ var workChk=null;
+ function setWork(on){
+  if(on&&workChk!==true){var u=workUrl();
+   var ac=window.AbortController?new AbortController():null;fetch(u,{cache:'no-store',signal:ac?ac.signal:undefined}).then(function(r){try{ac&&ac.abort()}catch(e){}if(r.status===404||r.status===410){workChk=false;workOn=false;setWork2(false);try{if(window.DEX_UI)window.DEX_UI.reply('A WORK oldal nincs a tárhelyen: a work/index.html hiányzik a DEX mellől. Töltsd fel a work mappát ugyanoda, ahol a DEX van, vagy használd a PC-s szervert.')}catch(e){}}else{workChk=true;setWork2(true)}}).catch(function(){workChk=true;setWork2(true)});return}
+  setWork2(on)}
+ function setWork2(on){workOn=!!on;hud(function(x){var w=x.querySelector('.wk');w.hidden=!workOn;if(workOn&&!w.firstChild){var f=document.createElement('iframe');f.src=workUrl();f.setAttribute('loading','eager');f.onload=function(){try{var d=f.contentDocument;if(d){var st=d.createElement('style');st.textContent='html,body{background:transparent!important}.app,.app-shell{background:transparent!important}';d.head.appendChild(st)}}catch(e){}};w.appendChild(f)}else if(!workOn){w.innerHTML=''}})}
  function warn(t,ms){hud(function(x){var w=x.querySelector('.warn');w.textContent=t;w.hidden=false});timers.push(setTimeout(function(){hud(function(x){x.querySelector('.warn').hidden=true})},ms||6000))}
  async function enter(gesture){
   if(root&&root.classList.contains('on'))return 'A VR mód már be van kapcsolva.';

@@ -26,3 +26,6 @@ MI MŰKÖDIK ITT, ÉS MI NEM
 - Public tárhely: bárki, aki ismeri a címet, megnyithatja. Titkos adatot (jelszó, kulcs) ne tegyél bele.
 
 TELEFONRÓL FELTÖLTÉS (ha mégis ott): a „Upload files” telefonról nem visz fel mappát. Előbb a gyökérfájlokat töltsd fel, utána Add file → Create new file, a név mezőbe írd: work/OLVASD_EL.txt (ettől létrejön a work mappa), majd lépj be a work mappába, és ott Upload files; ugyanígy a work/wdea-integrations mappával. PC-ről ez egy lépés.
+
+HA A VR-BEN „404 – File not found” JELENIK MEG A WORK HELYETT
+Ez azt jelenti, hogy a work mappa nincs a tárhelyen. Ellenőrizd: nyisd meg böngészőben a DEX-cím végére írva a /work/index.html-t. Ha ott is 404-et látsz, töltsd fel a work mappát (benne az index.html-lel és a wdea-integrations mappával) a DEX fájljai mellé, ugyanabba a szintre. A DEX most ilyenkor már szól is, hogy a work/index.html hiányzik.

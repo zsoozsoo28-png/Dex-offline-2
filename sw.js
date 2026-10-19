@@ -1,4 +1,4 @@
-const V='dex51-pwa-34-work-offline';
+const V='dex51-pwa-35-work-offline';
 const FILES=[
  './','./index.html','./manifest.webmanifest','./icon-192.png','./icon-512.png','./icon-maskable-512.png',
  './layer.js','./dex-work-bridge.js','./work/index.html',
