@@ -23,3 +23,13 @@ FONTOS KORLÁTOK
 - Nincs a csomagban teljes helyi nyelvi modell. A DEX itt meghatározott magyar hangparancsokat értelmez. Az Android/Chrome beszédfelismerése internettől és a telefon helyi nyelvi csomagjától függhet; a teljes offline beszédfelismerés ezen a telefonon még nincs igazolva.
 - A GitHub Pages első megnyitása internetet igényel. Az offline mód csak az egyszer már letöltött fájlokkal próbálható. A kamera HTTPS-en használható, a Chrome/Android mikrofonengedélyt is kér.
 - VR-próbát ülve vagy álló helyben, biztonságos beltéri környezetben végezz. A kamerakép késhet és takarhatja a közvetlen látást; ne sétálj a szemüvegben.
+
+v32 KIEGÉSZÍTÉS
+- A „keresd meg…”, „nyisd meg…” stb. parancsok csak VR-ben mennek a WORK felé (vagy ha kimondod: „…a WORK-ben”). VR-en kívül a DEX saját, régi parancsai ugyanúgy működnek.
+- Ha nincs kamera (pl. a fájlt a telefon tárolójából nyitottad meg, nem https címről), a DEX hangosan szól, hogy kamera nélkül indult. A képen továbbra sem jelenik meg semmi felirat.
+- A kamera csak https címen (pl. GitHub Pages) vagy localhoston működik, a telefon fájlkezelőjéből megnyitott fájlon nem.
+
+v33: JÁTÉKMENÜ + ÜTŐS BLOKKOK
+- „játékok”: kiteszi a játékmenüt (szókereső, ütős blokkok). Név vagy szám mondásával indul; „lejjebb/följebb” lapoz; „vissza” bezár.
+- „mutasd a csevegéseket”: áttetszően kiteszi az utolsó üzeneteket; „csevegés vissza”: elrejti.
+- Ütős blokkok: üss a kezeddel a kamera előtt, vagy mondd: „üss”. Három életed van; a bombát ne ütsd; az arany figura plusz élet. „állj”: szünet/elhallgat.

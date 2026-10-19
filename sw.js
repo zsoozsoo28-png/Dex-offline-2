@@ -1,7 +1,7 @@
-const V='dex51-pwa-33-work-offline';
+const V='dex51-pwa-34-work-offline';
 const FILES=[
  './','./index.html','./manifest.webmanifest','./icon-192.png','./icon-512.png','./icon-maskable-512.png',
- './layer.js','./dex-work-controller.js','./dex-work-bridge.js','./work/index.html',
+ './layer.js','./dex-work-bridge.js','./work/index.html',
  './work/OLVASD_EL.txt','./work/wdea-integrations/wdea-ai-command-bridge.css',
  './work/wdea-integrations/wdea-ai-command-bridge.js','./work/wdea-integrations/wdea-ai.css',
  './work/wdea-integrations/wdea-ai.js','./work/wdea-integrations/wdea-dex-link.js',

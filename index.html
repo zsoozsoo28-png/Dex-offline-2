@@ -254,7 +254,7 @@ async function speak(text,force=false){
     if(seq===voiceSequence)speechFallback(t);
   }
 }
-window.DEX_SPEAK=speak;window.DEX_STOP=stopSpeak;window.DEX_AUTO=function(){return !!V.auto};window.DEX_SPEAKING=function(){return !!((audio&&!audio.paused&&!audio.ended)||(window.speechSynthesis&&window.speechSynthesis.speaking))};
+window.DEX_SPEAK=speak;window.DEX_STOP=stopSpeak;window.DEX_PROGRESS=function(){try{if(audio&&audio.duration>0&&!audio.paused&&!audio.ended)return audio.currentTime/audio.duration}catch(e){}return null};window.DEX_AUTO=function(){return !!V.auto};window.DEX_SPEAKING=function(){return !!((audio&&!audio.paused&&!audio.ended)||(window.speechSynthesis&&window.speechSynthesis.speaking))};
 function setAuto(v){V.auto=!!v;vsave();if(!v)stopSpeak();syncSettings()}
 function setVoice(k){V.voice=k;vsave();syncSettings()}
 /* beállítások ablak */
@@ -265,9 +265,9 @@ document.getElementById('setSave').onclick=()=>{const g=id=>document.getElementB
 document.getElementById('voiceTest').onclick=()=>{const g=id=>document.getElementById(id);V.auto=true;V.voice=g('setVoice').value;V.key=g('setKey').value.trim();V.maxId=g('setMax').value.trim();V.genuineId=g('setGenuine').value.trim();g('setAuto').checked=true;vsave();speak('Szia! DEX vagyok. Most ezt a hangot hallod.',true);};
 document.getElementById('setClose').onclick=()=>showSettings(false);
 const UNK='Ezt még nem értem biztosan. Mondd másképp (a „parancsok” megmutatja, mit tudok), vagy kapcsold be az okos módot a Beállításokban.';
-function reply(t){addMessage('assistant',t);document.getElementById('reply').textContent='';window.__dexLast={t:String(t),cut:false};speak(t)}
-window.DEX_UI={add:addMessage,reply:reply};window.DEX_REPEAT=function(q){var n=String(q).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();if(!/^(mondd|ismeteld|ismetled|mond)( el| meg)* ?(meg ?egyszer|ujra|megegyszer)?$|meg egyszer|mit mondtal|mit mondott|folytasd|mondd tovabb|nem ertettem|ismeteld/.test(n)||n.split(' ').length>5)return null;var l=window.__dexLast;return l&&l.t?l.t:'Még nem mondtam semmit, amit megismételhetnék.'};
-function send(value){const s=String(value||'').trim();if(!s)return;const SQ=window.__dsq=(window.__dsq||0)+1;try{window.DEX_LLM_ABORT&&window.DEX_LLM_ABORT()}catch(e){}try{stopSpeak()}catch(e){}document.getElementById('chatInput').value='';addMessage('user',s);document.getElementById('reply').textContent='';
+function reply(t){if(t==='')return;addMessage('assistant',t);document.getElementById('reply').textContent='';window.__dexLast={t:String(t),cut:false,t0:Date.now()};speak(t)}
+window.DEX_UI={add:addMessage,reply:reply};window.DEX_REPEAT=function(q){if(window.DEX_VR&&window.DEX_VR.holds&&window.DEX_VR.holds())return null;var n=String(q).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();if(!/^(mondd|ismeteld|ismetled|mond)( el| meg)* ?(meg ?egyszer|ujra|megegyszer)?$|meg egyszer|mit mondtal|mit mondott|folytasd|mondd tovabb|nem ertettem|ismeteld/.test(n)||n.split(' ').length>5)return null;var l=window.__dexLast;if(l&&l.t&&l.cut&&l.at>0.02&&l.at<0.98&&/folytasd|tovabb/.test(n)){var T=String(l.t),ss=T.match(/[^.!?…]+[.!?…]*\s*/g)||[T],pos=Math.floor(l.at*T.length),c=0,i0=0;for(var k=0;k<ss.length;k++){if(pos<c+ss[k].length){i0=k;break}c+=ss[k].length;i0=k}return ss.slice(i0).join('').trim()||T}return l&&l.t?l.t:'Még nem mondtam semmit, amit megismételhetnék.'};
+function send(value){const s=String(value||'').trim();if(!s)return;const SQ=window.__dsq=(window.__dsq||0)+1;try{window.DEX_LLM_ABORT&&window.DEX_LLM_ABORT()}catch(e){}try{stopSpeak()}catch(e){}document.getElementById('chatInput').value='';if(!(window.DEX_VR&&window.DEX_VR.quiet&&window.DEX_VR.quiet(s)))addMessage('user',s);document.getElementById('reply').textContent='';
   {const rp=window.DEX_REPEAT&&window.DEX_REPEAT(s);if(rp){reply(rp);return}}
   const longMsg=s.split(/\s+/).length>6;
   const localThen=()=>{let r=null;try{r=window.DEX40.handle(s)}catch(e){r='Hiba történt, a felület nem változott.'}reply(r!==null?r:UNK)};
@@ -2140,7 +2140,7 @@ var QK='dex51_pubq';
 (function(){'use strict';
  var btn=document.getElementById('mic'),inp=document.getElementById('chatInput');
  var SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!btn||!inp)return;
- var on=false,rec=null,buf='',interim='',tm=null,paused=false,quiet=0,wd=null,SIL=+(localStorage.getItem('dex51_silence_ms')||0)||1800,BARGE=localStorage.getItem('dex51_barge')==='1',lastEnd=0;
+ var on=false,rec=null,buf='',interim='',tm=null,paused=false,quiet=0,wd=null,SIL=+(localStorage.getItem('dex51_silence_ms')||0)||1800,BARGE=localStorage.getItem('dex51_barge')==='1',lastEnd=0,gate=false,gq=0,STOPL=localStorage.getItem('dex51_stoplisten')!=='0';
  function toast(t){try{var e=document.getElementById('toast');e.textContent=t;e.classList.add('show');setTimeout(function(){e.classList.remove('show')},2600)}catch(x){}}
  function speaking(){try{return !!(window.DEX_SPEAKING&&window.DEX_SPEAKING())}catch(e){return false}}
  function nz(t){return String(t||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim()}
@@ -2150,7 +2150,7 @@ var QK='dex51_pubq';
   var sp=nz(window.__dexLast&&window.__dexLast.t||'');var set={};sp.split(' ').forEach(function(w){set[w]=1});var ws=all.split(' ').filter(function(w){return w.length>1});if(!ws.length)return 'echo';
   var hit=ws.filter(function(w){return set[w]}).length;if(ws.length>=2&&hit/ws.length<0.6)return 'cut';if(ws.length===1&&!set[ws[0]]&&ws[0].length>3)return 'cut';return 'echo'}
  function echoLike(t){var all=nz(t);if(!all)return false;var sp=nz(window.__dexLast&&window.__dexLast.t||'');if(!sp)return false;var set={};sp.split(' ').forEach(function(w){set[w]=1});var ws=all.split(' ').filter(function(w){return w.length>1});if(ws.length<2)return false;return ws.filter(function(w){return set[w]}).length/ws.length>=.6}
- function cutNow(){try{window.DEX_STOP&&window.DEX_STOP()}catch(e){}try{window.speechSynthesis&&window.speechSynthesis.cancel()}catch(e){}window.__dexCut=true;if(window.__dexLast)window.__dexLast.cut=true}
+ function cutNow(){var l0=window.__dexLast;if(l0&&!l0.cut){var pr=null;try{pr=window.DEX_PROGRESS&&window.DEX_PROGRESS()}catch(e){}if(pr==null&&l0.t0)pr=(Date.now()-l0.t0)/(String(l0.t).length*70);l0.at=Math.max(0,Math.min(1,pr||0))}try{window.DEX_STOP&&window.DEX_STOP()}catch(e){}try{window.speechSynthesis&&window.speechSynthesis.cancel()}catch(e){}window.__dexCut=true;if(window.__dexLast)window.__dexLast.cut=true}
  function mark(){btn.classList.toggle('listening',on&&!paused);btn.classList.toggle('dfx-hold',on);btn.setAttribute('aria-pressed',on?'true':'false')}
  function shown(){inp.value=(buf+' '+interim).trim()}
  function flush(){clearTimeout(tm);tm=null;var t=(buf+' '+interim).trim();buf='';interim='';if(!t){inp.value='';return}
@@ -2163,6 +2163,7 @@ var QK='dex51_pubq';
   if(!on||paused||rec)return;
   try{var r=new SR();rec=r;r.lang='hu-HU';r.continuous=true;r.interimResults=true;startLocal(r);
    r.onresult=function(e){var fin='',tmp='';for(var i=e.resultIndex;i<e.results.length;i++){var x=e.results[i];if(x.isFinal)fin+=x[0].transcript+' ';else tmp+=x[0].transcript}
+    if(gate){var gt=nz(fin+' '+tmp);buf='';interim='';inp.value='';clearTimeout(tm);tm=null;if(speaking()&&STOPW.test(gt)){cutNow();lastEnd=Date.now()}return}
     if(!(BARGE&&speaking())&&Date.now()-lastEnd<7000&&echoLike(fin+' '+tmp)){interim='';return}
     if(BARGE&&speaking()){var v=barge(fin,tmp);if(v==='echo'){interim='';return}cutNow();if(v==='stop'){buf='';interim='';inp.value='';clearTimeout(tm);return}}
     if(fin)buf=(buf+' '+fin).trim();interim=tmp.trim();shown();arm()};
@@ -2174,6 +2175,8 @@ var QK='dex51_pubq';
  function watch(){if(wd)return;wd=setInterval(function(){
   if(!on){clearInterval(wd);wd=null;return}
   if(speaking())lastEnd=Date.now();
+  if(STOPL&&!BARGE){if(speaking()){gate=true;gq=0;if(tm)flush();buf='';interim='';if(!rec&&!paused)start()}else if(gate){gq+=200;if(gq>=1500){gate=false;buf='';interim=''}}
+   if(paused&&!speaking()){paused=false;mark();start()}return}
   if(speaking()&&!BARGE){quiet=0;if(!paused){paused=true;if(tm)flush();stopRec();mark()}}
   else if(paused&&!speaking()){quiet+=200;if(quiet>=1500){paused=false;quiet=0;mark();start()}}},200)}
  function turnOn(){if(!SR){toast('A böngésző itt nem támogatja a beszédfelismerést. Írj a mezőbe.');return}
@@ -2181,11 +2184,11 @@ var QK='dex51_pubq';
   on=true;paused=false;buf='';interim='';mark();start();watch();toast('Hallgatlak. Beszélj, ameddig szeretnél, szünetnél válaszolok. Újra koppintva kikapcsol.')}
  function off(){on=false;paused=false;clearTimeout(tm);tm=null;stopRec();var t=(buf+' '+interim).trim();buf='';interim='';mark();if(t){inp.value=t}}
  btn.onclick=null;
- function interrupt(){cutNow();paused=false;quiet=0;lastEnd=Date.now();mark();start()}
+ function interrupt(){cutNow();gate=false;gq=0;paused=false;quiet=0;lastEnd=Date.now();mark();start()}
  btn.addEventListener('click',function(e){e.stopImmediatePropagation();e.preventDefault();if(on&&(speaking()||paused)){interrupt();return}if(on){var t=(buf+' '+interim).trim();off();if(t){inp.value='';if(typeof window.DEX40_SEND==='function')window.DEX40_SEND(t)}}else turnOn()},true);
  var fig=document.querySelector('.dfx');if(fig)fig.addEventListener('click',function(){if(on&&(speaking()||paused))interrupt()});
  var st=document.createElement('style');st.textContent='#mic.dfx-hold{box-shadow:0 0 0 3px #2fd5ff88,0 0 18px #2fd5ff}#mic.dfx-hold:not(.listening){opacity:.75}';document.head.appendChild(st);
- window.DEX_LISTEN={barge:function(v){if(v===undefined)return BARGE;BARGE=!!v;try{localStorage.setItem('dex51_barge',BARGE?'1':'0')}catch(e){}return BARGE},on:function(){return on},paused:function(){return paused},start:turnOn,stop:off,silence:function(ms){SIL=Math.max(600,Math.min(6000,+ms||SIL));try{localStorage.setItem('dex51_silence_ms',String(SIL))}catch(e){}return SIL}};
+ window.DEX_LISTEN={stoplisten:function(v){if(v===undefined)return STOPL;STOPL=!!v;try{localStorage.setItem('dex51_stoplisten',STOPL?'1':'0')}catch(e){}return STOPL},gated:function(){return gate},barge:function(v){if(v===undefined)return BARGE;BARGE=!!v;try{localStorage.setItem('dex51_barge',BARGE?'1':'0')}catch(e){}return BARGE},on:function(){return on},paused:function(){return paused},start:turnOn,stop:off,silence:function(ms){SIL=Math.max(600,Math.min(6000,+ms||SIL));try{localStorage.setItem('dex51_silence_ms',String(SIL))}catch(e){}return SIL}};
 })();
 
 </script>
@@ -2465,6 +2468,7 @@ document.body.appendChild(prof);document.body.appendChild(menu);
  var SS=document.createElement('style');SS.textContent=
   '#dyVR{position:fixed;z-index:2147483200;background:transparent;display:none;overflow:hidden;top:0;left:0;width:100vw;height:100vh}#dyVR.on{display:flex}'+
   '#dyVR.rot{width:100vh;height:100vw;transform-origin:0 0;transform:translateX(100vw) rotate(90deg)}'+
+  '#dyVR.rot .hud{zoom:var(--rz,1)}'+
   '#dyVR .eye{position:relative;flex:1 1 50%;width:50%;height:100%;overflow:hidden;background:transparent}'+
   '#dyVR.nocam .eye{background:radial-gradient(120% 90% at 50% 10%,#1b2a85 0%,#0d1440 45%,#050b22 100%)}#dyVR.nocam video{display:none}#dyVR video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#000}'+
   '#dyVR .hud{position:absolute;inset:0;pointer-events:none;transform:translateX(var(--ipd,0px))}'+
@@ -2481,23 +2485,52 @@ document.body.appendChild(prof);document.body.appendChild(menu);
   '#dyVR .sk table{border-collapse:separate;border-spacing:.5vh}#dyVR .sk td{width:4.7vh;height:4.7vh;text-align:center;font:700 3.5vh/4.7vh system-ui,sans-serif;color:#eaf6ff;text-shadow:0 1px 5px #000,0 0 8px #001;border-radius:.7vh;background:#06162b35}#dyVR .sk td.f{background:#2fd5ff66;color:#fff;box-shadow:0 0 10px #2fd5ff;text-decoration:line-through;text-decoration-thickness:.5vh}#dyVR .sk td.h{outline:.5vh solid #ffd27a;animation:skh 1s infinite}@keyframes skh{50%{outline-color:transparent}}'+
   '#dyVR .sk .wl{font:600 2.9vh/1.3 system-ui,sans-serif;color:#cfeaff;text-shadow:0 0 6px #000;min-width:14vh}#dyVR .sk .wl b{display:block;color:#ffd27a;font-size:2.6vh;letter-spacing:.08em;margin-bottom:.6vh}#dyVR .sk .wl i{display:block;font-style:normal}#dyVR .sk .wl i.d{color:#7fe8ff;text-decoration:line-through}#dyVR .sk .tm{margin-top:1vh;color:#9bb7d8;font-size:2.4vh}#dyVR .sk.p{opacity:.5}'+
   '#dyVR.g .vm{font-size:2.5vh;top:2.5%;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}#dyVR.g .vm .me{font-size:2.2vh}#dyVR.g .hd{width:min(11vh,12%)}#dyVR.g .stt{bottom:calc(6% + 14vh);font-size:2.6vh}#dyVR.g .warn{display:none}'+
+  '#dyVR .gm{position:absolute;left:7%;top:19%;max-width:48%;display:none;z-index:6;padding:1.2vh 1.8vh;border-radius:1.6vh;background:#02082044;font:600 5.6vh/1.5 system-ui,sans-serif;color:#eaf6ff;text-shadow:0 0 8px #000,0 1px 4px #000,0 0 16px #001}#dyVR .gm.on{display:block}'+
+  '#dyVR .gm b{display:block;color:#ffd27a;font-size:3.4vh;letter-spacing:.1em;margin-bottom:.8vh}#dyVR .gm i{display:block;font-style:normal;opacity:.78;white-space:nowrap}#dyVR .gm i.s{color:#7fe8ff;opacity:1}#dyVR .gm i.s::before{content:"\\25B8 "}#dyVR .gm i em{font-style:normal;color:#ffd27a;margin-right:1vh}#dyVR .gm u{display:block;text-decoration:none;font-size:3vh;color:#bfeaff;opacity:.9}#dyVR .gm s{display:block;text-decoration:none;font-size:2.8vh;color:#bcd2ee;margin-top:.8vh;white-space:normal}'+
+  '#dyVR .ug{position:absolute;inset:0;display:none;pointer-events:none;overflow:hidden}#dyVR .ug.on{display:block}#dyVR .ug.hurt{box-shadow:inset 0 0 12vh #ff2a2a}'+
+  '#dyVR .ug .bar{position:absolute;top:2.5%;left:0;right:0;text-align:center;font:700 3.6vh system-ui,sans-serif;color:#fff;letter-spacing:.06em;text-shadow:0 0 8px #000,0 1px 3px #000;z-index:300}'+
+  '#dyVR .ug .big{position:absolute;left:0;right:0;top:34%;text-align:center;font:800 12vh system-ui,sans-serif;color:#ffe08a;text-shadow:0 0 14px #000,0 2px 6px #000;z-index:300}'+
+  '#dyVR .fg{position:absolute;transform:translateX(-50%);aspect-ratio:.62;transform-origin:50% 100%;filter:drop-shadow(0 .6vh .5vh #0008)}#dyVR .fg *{position:absolute;box-sizing:border-box}'+
+  '#dyVR .fg .hd2{left:20%;top:3%;width:60%;height:27%;background:var(--sk);border:.35vh solid #0006;box-shadow:inset -.5vh -.5vh 0 #0003,inset .5vh .5vh 0 #fff3}'+
+  '#dyVR .fg .hr{left:18%;top:0;width:64%;height:10%;background:var(--hr);border:.3vh solid #0005;z-index:2}'+
+  '#dyVR .fg .e{top:36%;width:15%;height:20%;background:#111}#dyVR .fg .e.l{left:20%}#dyVR .fg .e.r{right:20%}#dyVR .fg .m{left:30%;top:68%;width:40%;height:12%;background:#7a1f1f}#dyVR .fg.f1 .m{height:22%;border-radius:0 0 1vh 1vh}#dyVR .fg.f2 .m{left:38%;width:24%;height:26%;background:#c0392b}'+
+  '#dyVR .fg .bd{left:20%;top:31%;width:60%;height:36%;background:var(--sh);border:.35vh solid #0006;box-shadow:inset -.6vh -.6vh 0 #0003,inset .6vh .6vh 0 #fff2;color:#fff;font:800 3vh/1 system-ui,sans-serif;text-align:center;padding-top:25%}'+
+  '#dyVR .fg .ar{top:32%;width:17%;height:33%;background:var(--sk);border:.3vh solid #0006;transform-origin:50% 0;animation:ugarm .55s ease-in-out infinite alternate}#dyVR .fg .ar.l{left:1%}#dyVR .fg .ar.r{right:1%;animation-direction:alternate-reverse}'+
+  '#dyVR .fg .lg{top:67%;width:28%;height:33%;background:var(--pn);border:.3vh solid #0006;transform-origin:50% 0;animation:ugarm .55s ease-in-out infinite alternate-reverse}#dyVR .fg .lg.l{left:22%}#dyVR .fg .lg.r{right:22%;animation-direction:alternate}'+
+  '@keyframes ugarm{from{transform:rotate(28deg)}to{transform:rotate(-28deg)}}@keyframes ugbob{50%{margin-bottom:1.2%}}#dyVR .fg.walk{animation:ugbob .55s ease-in-out infinite}'+
+  '#dyVR .fg.t-h .hr{background:#9aa5b1;height:16%;top:-2%;left:14%;width:72%}#dyVR .fg.t-h.nohelm .hr{background:var(--hr);height:10%;top:0;left:18%;width:64%}'+
+  '#dyVR .fg.t-b .hd2{background:#2b2b2b}#dyVR .fg.t-b .e{background:#ff4040}#dyVR .fg.t-b .hr{background:#ff9f1c;height:12%;width:14%;left:43%;top:-6%;animation:ugspark .25s infinite alternate}@keyframes ugspark{to{background:#ffee58}}'+
+  '#dyVR .fg.t-g{filter:drop-shadow(0 0 1.4vh #ffd34d)}#dyVR .fg.t-f .bd{border-radius:1vh}'+
+  '#dyVR .fg.reach{filter:drop-shadow(0 0 1.6vh #7fe8ff)}#dyVR .fg.reach.t-b{filter:drop-shadow(0 0 1.6vh #ff4040)}#dyVR .fg.reach::after{content:"ÜSS!";left:-20%;right:-20%;top:-26%;z-index:9;text-align:center;color:#ffe08a;font:800 3.4vh system-ui,sans-serif;text-shadow:0 0 6px #000,0 1px 3px #000}#dyVR .fg.reach.t-b::after{content:"NE!";color:#ff7777}'+
+  '#dyVR .fg.down{transition:transform .35s cubic-bezier(.4,0,1,1),opacity .5s .7s;transform:translateX(-50%) rotate(-92deg) translateY(12%);opacity:0;filter:none}#dyVR .fg.down::after{display:none}'+
+  '#dyVR .fg.boom{transition:transform .3s,opacity .4s .2s;transform:translateX(-50%) scale(1.5);opacity:0;filter:drop-shadow(0 0 3vh #ff9f1c)}'+
+  '#dyVR .ug .pop{position:absolute;transform:translateX(-50%);font:800 5vh system-ui,sans-serif;color:#fff27a;text-shadow:0 0 6px #000,0 2px 4px #000;animation:ugpop .9s ease-out forwards;z-index:250}#dyVR .ug .pop.bad{color:#ff6b6b}#dyVR .ug .pop.gold{color:#ffd34d}@keyframes ugpop{from{margin-bottom:0;opacity:1;font-size:3vh}to{margin-bottom:9%;opacity:0;font-size:6vh}}'+
+  '#dyVR.u .sk{display:none!important}'+
+  '#dyVR.m .sk{display:none!important}'+
+  '#dyVR .cm{position:absolute;left:8%;right:8%;bottom:7%;visibility:hidden;opacity:0;transition:opacity .45s,visibility .45s;text-align:center;font:500 3.8vh/1.3 system-ui,sans-serif;color:#fff;text-shadow:0 0 10px #000,0 1px 4px #000;white-space:pre-wrap;z-index:5;background:#02082026;border-radius:1.6vh;padding:.8vh 1.4vh}#dyVR .cm.on{visibility:visible;opacity:1}#dyVR .cm span{display:block}#dyVR .cm .me{color:#9fe1ff;font-size:.8em}#dyVR.g .cm{font-size:3vh}'+
   '#dyVR .gaze{position:absolute;left:50%;top:50%;width:1.2vh;height:1.2vh;margin:-.6vh;border-radius:50%;background:#5fe3ffaa}';
  document.head.appendChild(SS);
  function setHead(){try{var im=document.querySelector('img.robot');if(im&&im.src)document.documentElement.style.setProperty('--vrhead','url("'+im.src+'")')}catch(e){}}
  function mk(){
   root=document.createElement('div');root.id='dyVR';root.setAttribute('role','dialog');root.setAttribute('aria-label','VR mód');
   eyes=[0,1].map(function(i){var e=document.createElement('div');e.className='eye';
-   e.innerHTML='<video autoplay playsinline muted></video><div class="hud"><div class="vm"></div><div class="stt"></div><div class="hd"></div><div class="wk" hidden></div><div class="sk"></div><div class="warn" hidden></div><div class="foot">Csak zárt térben! · Kilépés: „VR vége” vagy 3 koppintás</div></div>';
+   e.innerHTML='<video autoplay playsinline muted></video><div class="hud"><div class="vm"></div><div class="stt"></div><div class="hd"></div><div class="wk" hidden></div><div class="sk"></div><div class="ug"></div><div class="gm"></div><div class="cm"></div><div class="warn" hidden></div><div class="foot">Csak zárt térben! · Kilépés: „VR vége” vagy 3 koppintás</div></div>';
    root.appendChild(e);return e});
   document.body.appendChild(root);
   var taps=[];root.addEventListener('click',function(){var n=Date.now();taps=taps.filter(function(t){return n-t<1200});taps.push(n);if(taps.length>=3){taps=[];leave()}});
  }
- function layout(){if(!root)return;var por=window.innerHeight>window.innerWidth&&!(screen.orientation&&/landscape/.test(screen.orientation.type||'')&&window.innerWidth>window.innerHeight);root.classList.toggle('rot',por)}
+ function layout(){if(!root)return;var por=window.innerHeight>window.innerWidth&&!(screen.orientation&&/landscape/.test(screen.orientation.type||'')&&window.innerWidth>window.innerHeight);root.classList.toggle('rot',por);root.style.setProperty('--rz',por?(window.innerWidth/window.innerHeight).toFixed(4):1)}
  function hud(fn){eyes.forEach(function(e,i){fn(e.querySelector('.hud'),i)})}
  function ipd(){var v=+(localStorage.getItem('dex51_vr_ipd')||0)||0;eyes.forEach(function(e,i){e.querySelector('.hud').style.setProperty('--ipd',((i?-1:1)*(5+v))+'px')})}
  var fc=0;
- function feed(){if(G&&!G.paused&&!G.done&&(++fc%3===0))skRender()}
- function setWork(on){workOn=!!on;hud(function(x){var w=x.querySelector('.wk');w.hidden=!workOn;if(workOn&&!w.firstChild){var f=document.createElement('iframe');f.src=new URL('./work/index.html',location.href).href;f.setAttribute('loading','eager');f.onload=function(){try{var d=f.contentDocument;if(d){var st=d.createElement('style');st.textContent='html,body{background:transparent!important}.app,.app-shell{background:transparent!important}';d.head.appendChild(st)}}catch(e){}};w.appendChild(f)}else if(!workOn){w.innerHTML=''}})}
+ var chatOn=false,chatSig='';
+ function chatRender(force){if(!root)return;var ms=[].slice.call(document.querySelectorAll('#inlineMessages .msg')).filter(function(m){return !m.classList.contains('system')}).slice(-2),
+  sig=chatOn?ms.map(function(m){return (m.classList.contains('me')?'u:':'a:')+m.textContent}).join('|'):'off';
+  if(!force&&sig===chatSig)return;chatSig=sig;
+  hud(function(x){var e=x.querySelector('.cm');if(!e)return;e.classList.toggle('on',chatOn&&ms.length>0);e.innerHTML='';if(!chatOn)return;ms.forEach(function(m){var sp=document.createElement('span');if(m.classList.contains('me'))sp.className='me';var tx=m.textContent.trim();sp.textContent=tx.length>120?tx.slice(0,117)+'…':tx;e.appendChild(sp)})})}
+ function chatSet(on){chatOn=!!on;chatRender(true)}
+ function feed(){if(G&&!G.paused&&!G.done&&(++fc%3===0))skRender();if(chatOn)chatRender()}
+ function setWork(on){workOn=!!on;hud(function(x){var w=x.querySelector('.wk');w.hidden=!workOn;if(workOn&&!w.firstChild){var f=document.createElement('iframe');f.src=new URL(/\/dex\/[^\/]*$/.test(location.pathname)?'../work/index.html':'./work/index.html',location.href).href;f.setAttribute('loading','eager');f.onload=function(){try{var d=f.contentDocument;if(d){var st=d.createElement('style');st.textContent='html,body{background:transparent!important}.app,.app-shell{background:transparent!important}';d.head.appendChild(st)}}catch(e){}};w.appendChild(f)}else if(!workOn){w.innerHTML=''}})}
  function warn(t,ms){hud(function(x){var w=x.querySelector('.warn');w.textContent=t;w.hidden=false});timers.push(setTimeout(function(){hud(function(x){x.querySelector('.warn').hidden=true})},ms||6000))}
  async function enter(gesture){
   if(root&&root.classList.contains('on'))return 'A VR mód már be van kapcsolva.';
@@ -2513,11 +2546,11 @@ document.body.appendChild(prof);document.body.appendChild(menu);
   layout();
   if(window.DEX_LISTEN&&!window.DEX_LISTEN.on()){try{window.DEX_LISTEN.start();startedMic=true}catch(e){}}
   // No visual status or transcript is shown in headset mode.
-  if(nocam){try{console.warn('DEX VR camera:',nocam)}catch(e){}}
+  if(nocam){try{console.warn('DEX VR camera:',nocam)}catch(e){}timers.push(setTimeout(function(){if(window.DEX_UI&&window.DEX_UI.reply)window.DEX_UI.reply(nocam)},1500))}
   return 'VR mód bekapcsolva. A kamera képét látod mindkét szemmel, én itt vagyok előtted, és folyamatosan hallgatlak. Csak szobában, helyben állva vagy ülve használd, sétálni nem szabad. Kilépés: mondd, hogy VR vége.'}
  function leave(){
   if(!root||!root.classList.contains('on'))return 'A VR mód nincs bekapcsolva.';
-  G=null;skRender();root.classList.remove('on');clearInterval(poll);poll=null;timers.forEach(clearTimeout);timers=[];window.removeEventListener('resize',layout);
+  G=null;uStop();introSaid=false;M=null;chatOn=false;chatRender(true);gmRender();skRender();root.classList.remove('on');clearInterval(poll);poll=null;timers.forEach(clearTimeout);timers=[];window.removeEventListener('resize',layout);
   try{if(st)st.getTracks().forEach(function(t){t.stop()})}catch(e){}st=null;eyes.forEach(function(e){var v=e.querySelector('video');v.srcObject=null});setWork(false);
   try{if(document.fullscreenElement&&document.exitFullscreen)document.exitFullscreen()}catch(e){}try{screen.orientation&&screen.orientation.unlock&&screen.orientation.unlock()}catch(e){}
   if(startedMic&&window.DEX_LISTEN&&window.DEX_LISTEN.on())window.DEX_LISTEN.stop();startedMic=false;
@@ -2545,8 +2578,8 @@ document.body.appendChild(prof);document.body.appendChild(menu);
   var h=G.hint?G.hint.join(','):'',rows=G.grid.map(function(row,i){return '<tr>'+row.map(function(ch,j){var k=i+','+j;return '<td class="'+(f[k]?'f':'')+(h===k?' h':'')+'">'+ch+'</td>'}).join('')+'</tr>'}).join('');
   var sec=Math.floor(((G.done?G.tEnd:Date.now())-G.t0-G.tp)/1000),tm=Math.floor(sec/60)+':'+('0'+sec%60).slice(-2);
   return '<table>'+rows+'</table><div class="wl"><b>KERESD</b>'+G.words.map(function(w){return '<i class="'+(G.found[w]?'d':'')+'">'+w+'</i>'}).join('')+'<div class="tm">'+Object.keys(G.found).length+'/'+G.words.length+' · '+tm+(G.paused?' · szünet':'')+'</div></div>'}
- function skRender(){if(!root)return;root.classList.toggle('g',!!G);hud(function(x){var e=x.querySelector('.sk');if(!e)return;e.classList.toggle('on',!!G);e.classList.toggle('p',!!(G&&G.paused));e.style.setProperty('--skz',G?G.zoom:1);e.innerHTML=skHTML()})}
- function startGame(){newGame();skRender();return 'Szókereső. Keresd meg a rácsban a jobb oldali szavakat (vízszintesen, függőlegesen vagy átlósan, előre olvasva). Ha megvan, mondd: „megvan, HOLD”. Segítség: „tipp”, szünet: „szünet”, nagyítás: „nagyítsd”, új játék: „következő játék”, vége: „szókereső vége”.'}
+ function skRender(){if(!root)return;root.classList.toggle('g',!!G);root.classList.toggle('m',!!(typeof M!=='undefined'&&M));hud(function(x){var e=x.querySelector('.sk');if(!e)return;e.classList.toggle('on',!!G);e.classList.toggle('p',!!(G&&G.paused));e.style.setProperty('--skz',G?G.zoom:1);e.innerHTML=skHTML()})}
+function startGame(){uStop();newGame();skRender();return 'Szókereső. Keresd meg a rácsban a jobb oldali szavakat (vízszintesen, függőlegesen vagy átlósan, előre olvasva). Ha megvan, mondd: „megvan, HOLD”. Segítség: „tipp”, szünet: „szünet”, nagyítás: „nagyítsd”, új játék: „következő játék”, vége: „szókereső vége”.'}
 function lev(a,b){var d=[],i,j;for(i=0;i<=a.length;i++)d[i]=[i];for(j=0;j<=b.length;j++)d[0][j]=j;for(i=1;i<=a.length;i++)for(j=1;j<=b.length;j++)d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+(a[i-1]===b[j-1]?0:1));return d[a.length][b.length]}
  function scan(f){var tk=f.split(' ').map(function(t){return t.replace(/[^a-z]/g,'')}).filter(Boolean),un=G.words.filter(function(w){return !G.found[w]}),c=[];
   tk.forEach(function(t,i){c.push(t);if(i+1<tk.length)c.push(t+tk[i+1])});
@@ -2573,14 +2606,135 @@ function lev(a,b){var d=[],i,j;for(i=0;i<=a.length;i++)d[i]=[i];for(j=0;j<=b.len
   if(cand){var r=tryWord(cand);if(r)return r;if(m){var sw=scan(cand);if(sw){var r2=tryWord(sw);if(r2)return r2}return 'Ilyen szót nem találok a listában: '+cand.toUpperCase()+'. Nézd meg a jobb oldali szavakat.'}}
   var sw2=scan(f);if(sw2){var r3=tryWord(sw2);if(r3)return r3}
   return null}
+
+ /* ---- ÜTŐS BLOKKOK: blokk-figurák jönnek feléd; ütsd le őket (kézmozdulat a kamera előtt, vagy hangon: „üss”) ---- */
+ var U=null,UT=null,prevFrame=null,cvs=null,introSaid=false,UBEST=+(localStorage.getItem('dex51_utos_best')||0)||0;
+ var UTY={n:{hp:1,sp:1,pts:1},h:{hp:2,sp:.9,pts:2},f:{hp:1,sp:1.7,pts:2},g:{hp:1,sp:1.25,pts:5},b:{hp:1,sp:.85,pts:0,bomb:true}};
+ var SKIN=['#9bd37a','#8fc7e8','#f5b6d4','#ffd9a8','#c7a6ff','#ffb27a'],SHIRT=['#e0523f','#f0a020','#8e44ad','#ec5aa0','#d6d63a','#ff7a3d'],PANT=['#2b2b6b','#6b2b2b','#2b6b4a','#f0d020','#e0523f'],HAIR=['#111','#e8c040','#ff6a00','#7b3fe4','#00b3a4'];
+ var POPW=['BUMM!','PUFF!','AJJ!','BÚÚ!','HOPP!','ZUHANT!','PÁ!'];
+ function rr(a){return a[rnd(a.length)]}
+ function figHTML(t){return '<i class="hr"></i><div class="hd2"><b class="e l"></b><b class="e r"></b><b class="m"></b></div><div class="bd">'+(t==='b'?'TNT':'')+'</div><div class="ar l"></div><div class="ar r"></div><div class="lg l"></div><div class="lg r"></div>'}
+ function uBeep(f,d,v){try{var A=window.AudioContext||window.webkitAudioContext;if(!A)return;window.__dexAC=window.__dexAC||new A();var c=window.__dexAC,o=c.createOscillator(),g=c.createGain();o.type='square';o.frequency.value=f;g.gain.value=v||.05;o.connect(g);g.connect(c.destination);o.start();g.gain.exponentialRampToValueAtTime(.0001,c.currentTime+d);o.stop(c.currentTime+d)}catch(e){}}
+ function uVib(n){try{navigator.vibrate&&navigator.vibrate(n)}catch(e){}}
+ function uBar(){if(!U)return;var h='';for(var i=0;i<Math.max(3,U.lives);i++)h+=i<U.lives?'♥':'♡';var t=h+'  PONT '+U.score+'  SZINT '+U.lvl+(U.combo>=3?'  KOMBÓ x'+U.combo:'');
+  var c='';if(U.state==='ready')c=U.cd>0?String(Math.ceil(U.cd)):'ÜSS!';if(U.state==='over')c='VÉGE';if(U.paused)c='SZÜNET';
+  hud(function(x){var u=x.querySelector('.ug');if(!u)return;var b=u.querySelector('.bar'),k=u.querySelector('.big');if(b)b.textContent=t;if(k)k.textContent=c})}
+ function uPop(fig,txt,cls){hud(function(x,i){var u=x.querySelector('.ug');if(!u||!fig.el[i])return;var p=document.createElement('div');p.className='pop '+(cls||'');p.textContent=txt;p.style.left=fig.x*100+'%';p.style.bottom=(fig.hpct+fig.b)+'%';u.appendChild(p);setTimeout(function(){try{p.remove()}catch(e){}},900)})}
+ function uPlace(f){var z=f.z;f.hpct=14+58*z;f.b=4+(1-z)*34;hud(function(x,i){var e=f.el[i];if(!e)return;e.style.left=f.x*100+'%';e.style.bottom=f.b+'%';e.style.height=f.hpct+'%';e.style.zIndex=Math.round(z*100);e.classList.toggle('reach',!f.down&&z>=.5)})}
+ function uSpawn(type,x,z){if(!U)return null;var d=UTY[type]||UTY.n,f={type:type,x:x==null?.14+Math.random()*.72:x,z:z==null?.15:z,hp:d.hp,sp:d.sp,down:false,t0:Date.now(),el:[],last:0,face:rnd(3)};
+  var sk=type==='g'?'#ffd34d':rr(SKIN),sh=type==='g'?'#ffb300':type==='b'?'#d32f2f':rr(SHIRT),pn=type==='g'?'#e69a00':rr(PANT),hr=type==='g'?'#fff2a8':rr(HAIR);
+  hud(function(xx,i){var u=xx.querySelector('.ug');if(!u)return;var e=document.createElement('div');e.className='fg walk t-'+type+' f'+f.face;e.style.cssText='--sk:'+sk+';--sh:'+sh+';--pn:'+pn+';--hr:'+hr;e.innerHTML=figHTML(type);u.appendChild(e);f.el[i]=e});
+  U.figs.push(f);uPlace(f);return f}
+ function uKill(f){f.el.forEach(function(e){try{e&&e.remove()}catch(x){}});}
+ function uHit(f){if(!U||!f||f.down||U.state!=='play'||U.paused)return false;var d=UTY[f.type]||UTY.n;f.last=Date.now();
+  if(d.bomb){f.down=true;U.lives--;U.combo=0;uPop(f,'BUMM! −♥','bad');f.el.forEach(function(e){e&&e.classList.add('boom')});uBeep(90,.35,.08);uVib([60,40,60]);setTimeout(function(){uKill(f)},700);uBar();if(U.lives<=0)uOver();return true}
+  f.hp--;
+  if(f.hp>0){f.z=Math.max(.15,f.z-.18);f.el.forEach(function(e){e&&e.classList.add('nohelm')});uPop(f,'KLONK!','');uBeep(300,.12);uVib(25);uPlace(f);return true}
+  f.down=true;U.ko++;U.combo++;var mult=1+Math.floor(U.combo/5);U.score+=d.pts*mult;U.lvl=1+Math.floor(U.ko/8);
+  if(f.type==='g'){U.lives=Math.min(5,U.lives+1);uPop(f,'+♥ ARANY!','gold')}else uPop(f,rr(POPW),'');
+  f.el.forEach(function(e){e&&(e.classList.remove('walk'),e.classList.add('down'))});uBeep(520,.15);uVib(30);setTimeout(function(){uKill(f)},1300);uBar();return true}
+ function uNearest(){if(!U)return null;var b=null;U.figs.forEach(function(f){if(!f.down&&f.z>=.5&&(!b||f.z>b.z))b=f});return b}
+ function uOver(){U.state='over';if(U.score>UBEST){UBEST=U.score;try{localStorage.setItem('dex51_utos_best',String(UBEST))}catch(e){}}uBar();
+  var t='Vége a játéknak! '+U.ko+' figurát ütöttél le, '+U.score+' pontot szereztél'+(U.score>=UBEST&&U.score>0?', ez új rekord!':'. A rekordod: '+UBEST+'.')+' Mondd: még egyszer, vagy: játékok.';
+  setTimeout(function(){if(U&&U.state==='over'&&window.DEX_UI)window.DEX_UI.reply(t)},900)}
+ function e2v(xf,yf){var v=eyes[0]&&eyes[0].querySelector('video');if(!v||!v.videoWidth)return null;var ew=eyes[0].clientWidth||1,eh=eyes[0].clientHeight||1,va=v.videoWidth/v.videoHeight,ea=ew/eh,vx,vy;
+  if(va>ea){var dw=eh*va;vx=(xf*ew+(dw-ew)/2)/dw;vy=yf}else{var dh=ew/va;vy=(yf*eh+(dh-eh)/2)/dh;vx=xf}return [Math.max(0,Math.min(1,vx)),Math.max(0,Math.min(1,vy))]}
+ function motionGrid(){var v=eyes[0]&&eyes[0].querySelector('video');if(!v||!v.videoWidth||v.readyState<2)return null;
+  if(!cvs){cvs=document.createElement('canvas');cvs.width=64;cvs.height=36}var cx=cvs.getContext('2d',{willReadFrequently:true});
+  try{cx.drawImage(v,0,0,64,36);var im=cx.getImageData(0,0,64,36).data}catch(e){return null}var g=new Uint8Array(2304),i;for(i=0;i<2304;i++)g[i]=(im[i*4]*3+im[i*4+1]*6+im[i*4+2])/10;
+  if(!prevFrame){prevFrame=g;return null}var d=new Uint8Array(2304),n=0;for(i=0;i<2304;i++){if(Math.abs(g[i]-prevFrame[i])>26){d[i]=1;n++}}prevFrame=g;return {d:d,frac:n/2304}}
+ function regionMotion(gr,x0,y0,x1,y1){var a=e2v(x0,y0),b=e2v(x1,y1);if(!a||!b)return 0;var gx0=Math.floor(Math.min(a[0],b[0])*64),gx1=Math.ceil(Math.max(a[0],b[0])*64),gy0=Math.floor(Math.min(a[1],b[1])*36),gy1=Math.ceil(Math.max(a[1],b[1])*36),c=0,t=0,x,y;
+  for(y=Math.max(0,gy0);y<Math.min(36,gy1);y++)for(x=Math.max(0,gx0);x<Math.min(64,gx1);x++){t++;c+=gr.d[y*64+x]}return t?c/t:0}
+ function uStep(dt){if(!U)return;var now=Date.now();
+  if(U.paused)return;
+  if(U.state==='intro'){var sp=false;try{sp=!!(window.DEX_SPEAKING&&window.DEX_SPEAKING())}catch(e){}if(sp)U.heard=true;
+   if((U.heard&&!sp)||(!U.heard&&now-U.t0>6500)||!U.say){U.state='ready';U.cd=3;uBar()}return}
+  if(U.state==='ready'){U.cd-=dt;if(U.cd<=-.7){U.state='play';U.sp=0;uBar()}else uBar();return}
+  if(U.state!=='play')return;
+  U.sp-=dt;if(U.sp<=0){var r=Math.random(),ty='n';if(U.lvl>=2&&r<.18)ty='h';if(U.lvl>=2&&r>=.18&&r<.34)ty='f';if(U.lvl>=2&&r>=.34&&r<.44)ty='b';if(r>.94)ty='g';if(U.lvl===1&&U.ko>=3&&r<.2)ty='h';uSpawn(ty);U.sp=Math.max(.8,2.5-.17*U.lvl)*(.75+Math.random()*.5)}
+  var base=.17+.012*U.lvl;
+  U.figs.slice().forEach(function(f){if(f.down)return;f.z+=dt*base*f.sp;uPlace(f);
+   if(f.z>=1){f.down=true;var d=UTY[f.type];setTimeout(function(){uKill(f)},50);U.figs.splice(U.figs.indexOf(f),1);
+    if(!d.bomb&&f.type!=='g'){U.lives--;U.combo=0;uBeep(110,.3,.08);uVib([80,40,80]);hud(function(x){var u=x.querySelector('.ug');if(u){u.classList.add('hurt');setTimeout(function(){u.classList.remove('hurt')},350)}});uBar();if(U.lives<=0)uOver()}}});
+  U.figs=U.figs.filter(function(f){return !f.down||now-f.last<1500});
+  /* kézmozdulat a kamera előtt */
+  if(now-(U.lm||0)>90){U.lm=now;var gr=motionGrid(),ew=eyes[0]?eyes[0].clientWidth||1:1,eh=eyes[0]?eyes[0].clientHeight||1:1;
+   U.figs.forEach(function(f){if(f.down||f.z<.5||now-f.last<450)return;var ok=false;
+    if(typeof window.__uMotion==='function')ok=!!window.__uMotion(f);
+    else if(gr&&gr.frac<.5){var H=(14+58*f.z)/100,W=H*.62*eh/ew,y1=1-f.b/100,y0=y1-H;ok=regionMotion(gr,f.x-W/2,y0,f.x+W/2,y1)>=.18}
+    if(ok)uHit(f)})}}
+ function uTick(){var n=Date.now(),dt=Math.min(.25,(n-(U?U.lt:n))/1000);if(U){U.lt=n;uStep(dt)}}
+ function uStop(){if(UT){clearInterval(UT);UT=null}if(U){U.figs.forEach(uKill);U=null}hud(function(x){var u=x.querySelector('.ug');if(u){u.classList.remove('on');u.innerHTML='<div class="bar"></div><div class="big"></div>'}});prevFrame=null;if(root)root.classList.remove('u')}
+ function uStart(){G=null;skRender();uStop();root.classList.add('u');
+  hud(function(x){var u=x.querySelector('.ug');if(u){u.innerHTML='<div class="bar"></div><div class="big"></div>';u.classList.add('on')}});
+  var say=!introSaid;introSaid=true;
+  U={id:'utos',state:'intro',figs:[],lives:3,score:0,ko:0,lvl:1,combo:0,paused:false,t0:Date.now(),lt:Date.now(),heard:false,say:say,cd:3,sp:0};
+  UT=setInterval(uTick,40);uBar();
+  return say?'Ütős blokkok! Kis blokk-figurák jönnek feléd. Üss feléjük a kezeddel, vagy mondd: üss, és elesnek. Ne engedd, hogy hozzád érjenek: három életed van. A piros bombát ne üsd meg, az arany figura plusz élet. Ha meg akarsz állítani, mondd: állj.':'Ütős blokkok, készülj!'}
+ function uCmd(f){
+  if(!U)return null;
+  if(/\b(vege|kilep\w*|hagyjuk|kiszall\w*)\b.*\b(jatek\w*|utos|blokk\w*)\b|\b(utos|blokk\w*)\b.*\b(vege|ki|kilep\w*)\b/.test(f)&&!/\b(vr)\b/.test(f)){uStop();return 'Kiléptem az Ütős blokkokból.'}
+  if(/\b(szabaly\w*|hogyan kell|mi a lenyeg|magyarazd\w*|mondd el)\b/.test(f))return 'Ütős blokkok: blokk-figurák jönnek feléd, üss feléjük a kezeddel vagy mondd: üss. Három életed van, a piros bombát ne üsd meg, az arany figura plusz élet. Szünet: állj.';
+  if(/\b(meg egyszer|ujra|uj jatek|kovetkezo jatek|ujrakezd\w*)\b/.test(f)&&(U.state==='over'||/\bjatek\b/.test(f)))return uStart();
+  if(/^(allj|stop|szunet|varj|megallj|pihenj|pillanat)$/.test(f)&&(U.state==='play'||U.state==='ready')){if(!U.paused){U.paused=true;U.pa=Date.now();uBar()}return 'Szünet. Ha folytatjuk, mondd: folytasd.'}
+  if(/\b(folytasd|folytassuk|mehet|tovabb)\b/.test(f)&&U.paused){U.paused=false;U.mp=false;U.lt=Date.now();uBar();return 'Folytatjuk.'}
+  if(U.paused)return null;
+  if(/\b(uss|utes\w*|utom|ut|bumm|bum|bam|nyomd|nyomas|csap\w*|pofozd|kapd|rajta|ki vele)\b/.test(f)&&f.split(' ').length<=4){if(U.state==='play'){var t=uNearest();if(t)uHit(t)}return ''}
+  if(U.state==='play'&&!/\b(vr|work\w*|jatek\w*|menu|cseveges\w*|chat|kijelzo\w*|kepernyo\w*|vege|ki|kilep\w*)\b/.test(f))return '';
+  return null}
+
+ /* ---- JÁTÉKMENÜ: áttetsző felirat a szem előtt; hangon választható, lapozható ---- */
+ var M=null,GAMES=[{id:'szokereso',name:'Szókereső',say:'szókereső',start:function(){return startGame()}},{id:'utos',name:'Ütős blokkok',say:'ütős blokkok',start:function(){return uStart()}}],VIS=4;
+ var NUMW={egy:1,egyes:1,elso:1,ketto:2,kettes:2,masodik:2,harom:3,hármas:3,harmas:3,harmadik:3,negy:4,negyes:4,negyedik:4,ot:5,otos:5,otodik:5,hat:6,hatos:6,het:7,hetes:7,nyolc:8,nyolcas:8,kilenc:9,tiz:10};
+ function items(){var a=[];if(G&&!G.done)a.push({id:'resume',name:'Folytatás – Szókereső'});if(U&&U.state!=='over')a.push({id:'resumeU',name:'Folytatás – Ütős blokkok'});GAMES.forEach(function(g){a.push(g)});return a}
+ function gmRender(){hud(function(x){var e=x.querySelector('.gm');if(!e)return;if(!M){e.classList.remove('on');e.innerHTML='';return}
+  var it=items(),top=Math.max(0,Math.min(M.top,Math.max(0,it.length-VIS))),h='<b>JÁTÉKOK</b>';
+  if(top>0)h+='<u>▲ följebb ('+top+')</u>';
+  it.slice(top,top+VIS).forEach(function(g,k){var n=top+k;h+='<i class="'+(n===M.sel?'s':'')+'"><em>'+(n+1)+'</em>'+g.name.replace(/[<>&]/g,'')+'</i>'});
+  if(top+VIS<it.length)h+='<u>▼ lejjebb ('+(it.length-top-VIS)+')</u>';
+  h+='<s>Mondd a játék nevét vagy a számát · lejjebb · följebb · vissza</s>';e.innerHTML=h;e.classList.add('on')})}
+ function menuOpen(){var it=items();M={sel:0,top:0};if(G&&!G.paused){G.paused=true;G.pa=Date.now();G.mp=true}if(U&&!U.paused&&U.state!=='over'){U.paused=true;U.pa=Date.now();U.mp=true}gmRender();skRender();
+  return it.length?('Játékok: '+it.map(function(g,i){return (i+1)+', '+(g.say||g.name)}).join('; ')+'. Mondd a nevét vagy a számát.'+(G?' A „folytasd” visszavisz a játékba.':'')):'Még nincs játék.'}
+ function menuClose(resume){M=null;gmRender();if(resume&&G&&G.paused&&G.mp){G.paused=false;G.mp=false;G.tp+=Date.now()-G.pa}if(resume&&U&&U.paused&&U.mp){U.paused=false;U.mp=false;U.lt=Date.now();uBar()}skRender()}
+ function menuPick(i){var it=items(),g=it[i];if(!g)return null;
+  if(g.id==='resume'||g.id==='resumeU'){menuClose(true);return 'Visszamentünk a játékba.'}
+  menuClose(false);if(G&&G.mp){G.mp=false}G=null;uStop();return g.start()}
+ function menuCmd(f){
+  var vr=!!(root&&root.classList.contains('on'));if(!vr)return null;
+  var open=!!M,inGame=!!(G&&!G.done)||!!(U&&U.state!=='over');
+  var wantOpen=/\b(jatek|jatekok|jatekokat|jatekmappa|jatekmenu|jatek menu|jatek lista)\b/.test(f)&&!/\b(vege|ki|kilep\w*|hagyjuk|uj|kovetkezo|masik|ujra)\b/.test(f);
+  if(!open){
+   if(wantOpen)return menuOpen();
+   if(inGame&&/^(vissza|menu|fomenu|lepj vissza|lepjunk vissza|kilepek)$/.test(f))return menuOpen();
+   return null}
+  /* nyitott menü */
+  if(/\b(lejjebb|lefele|lapozz|gorgess\w*|tovabb|kovetkezo oldal)\b/.test(f)||/^le$/.test(f)){var n=items().length;M.sel=Math.min(n-1,M.sel+1);if(M.sel>=M.top+VIS)M.top=M.sel-VIS+1;gmRender();return 'Lejjebb léptem.'}
+  if(/\b(f[eo]ljebb|f[eo]lfele|elozo oldal)\b/.test(f)||/^f[eo]l$/.test(f)){M.sel=Math.max(0,M.sel-1);if(M.sel<M.top)M.top=M.sel;gmRender();return 'Feljebb léptem.'}
+  if(/\b(folytasd|folytassuk|vissza a jatekba|vissza a jatekhoz)\b/.test(f)&&inGame){menuClose(true);return 'Folytatjuk a játékot.'}
+  if(/^(ez|ezt|ezt valasztom|valasztom|inditsd|indits|mehet|ok|oke|rendben)$/.test(f))return menuPick(M.sel);
+  if(/\b(vissza|bezar\w*|eltuntet\w*|eleg|jatek el|menu el|jatekok el|kilep\w*)\b/.test(f)&&!/\bvr\b/.test(f)){menuClose(true);return inGame?'Visszamentünk a játékba.':'Bezártam a játékmenüt.'}
+  var it=items(),w=f.split(' ').filter(Boolean);
+  if(w.length<=4){
+   for(var i=0;i<it.length;i++){var nm=fold(it[i].name).replace(/[^a-z ]/g,'');if(it[i].id==='resume')continue;if(f.indexOf(fold(it[i].say||it[i].name))>=0||f.indexOf(nm)>=0)return menuPick(i)}
+   for(var k=0;k<w.length;k++){var v=/^\d+$/.test(w[k])?+w[k]:NUMW[w[k]];if(v&&v<=it.length)return menuPick(v-1)}}
+  return null}
  var h0=Dx.handle;
  Dx.handle=function(raw){
   var f=fold(raw),self=this,args=arguments,vr=!!(root&&root.classList.contains('on'));
   if(f.length<90){
+   if(vr&&!/\bwork\w*\b/.test(f)){
+    var CH=/\b(cseveges\w*|chat\w*|uzenet\w*|beszelgetes\w*|kijelzo\w*|kepernyo\w*)\b/;
+    if(CH.test(f)&&/\b(vissza|el|le|zar\w*|tuntesd|rejtsd|eltuntet\w*|bezar\w*|ki)\b/.test(f)&&!/\b(mutasd|tedd|rakd|hozd|jelenj\w*|elem)\b/.test(f)){chatSet(false);return 'Elrejtettem a csevegést.'}
+    if(CH.test(f)&&/\b(mutas\w*|tedd|tegy\w*|rakd|rakj\w*|hozd|hozz\w*|jelenj\w*|lathassam|lassam)\b/.test(f)){chatSet(true);return chatOn&&document.querySelectorAll('#inlineMessages .msg').length?'Kitettem a csevegést. Ha beszélgetünk, itt látod. Elrejtés: csevegés vissza.':'Kitettem a csevegést. Még nincs benne üzenet, amint beszélgetünk, megjelenik. Elrejtés: csevegés vissza.'}}
+   if(vr){var mc=menuCmd(f);if(mc!==null)return mc}
+   if(vr&&U){var uc=uCmd(f);if(uc!==null)return uc}
    if(vr&&G){var gc=gameCmd(f,raw);if(gc!==null)return gc}
    if(vr&&/\b(szokereso|szo kereso|betu racs)\w*\b/.test(f)&&!/\b(vege|ki)\b/.test(f))return startGame();
+   if(vr&&/\b(utos blokk\w*|utos jatek\w*|blokk utes\w*|blokkutes\w*)\b/.test(f)&&!/\b(vege|ki|kilep\w*)\b/.test(f))return uStart();
+   if(!vr&&/\b(utos blokk\w*|utos jatek\w*|blokk utes\w*)\b/.test(f)&&!/\b(vege|ki)\b/.test(f)){enter(false).then(function(t){var g=uStart();if(window.DEX_UI)window.DEX_UI.reply(g)});return 'Megnyitom a VR módot, és indítom az Ütős blokkokat…'}
    if(!vr&&/\b(szokereso|szo kereso)\w*\b/.test(f)&&!/\b(vege|ki)\b/.test(f)){enter(false).then(function(t){var g=startGame();if(window.DEX_UI)window.DEX_UI.reply(g)});return 'Megnyitom a VR módot, és indítom a szókeresőt…'}
    if(vr&&EXIT.test(f))return leave();
+   if(!vr&&/^(jatek|jatekok|jatekmappa|jatek menu|jatekmenu)$/.test(f)){enter(false).then(function(t){var g=menuOpen();if(window.DEX_UI)window.DEX_UI.reply(g)});return 'Megnyitom a VR módot és a játékokat…'}
    if(vr&&WORKV.test(f)){setWork(true);return 'Kitettem a WORK felületet a látómeződ jobb oldalára. Ha el akarod tüntetni, mondd: WORK el.'}
    if(vr&&/\bwork\w*\b.*\b(el|le|zar\w*|tuntesd|rejtsd)\b/.test(f)){setWork(false);return 'Elrejtettem a WORK felületet.'}
    if(!vr&&ENTER.test(f)&&!EXIT.test(f)){enter(false).then(function(t){if(window.DEX_UI)window.DEX_UI.reply(t)});return 'Megnyitom a kamerát a VR módhoz…'}}
@@ -2590,7 +2744,28 @@ function lev(a,b){var d=[],i,j;for(i=0;i<=a.length;i++)d[i]=[i];for(j=0;j<=b.len
  function netChip(){var off=navigator.onLine===false;of.style.display=off?'block':'none';return off}
  window.addEventListener('offline',function(){netChip();try{if(window.DEX_UI)window.DEX_UI.reply('Offline módban vagyok. A helyi parancsok, a jegyzetek, a VR és a szókereső működnek; az okos mód és a WORK a számítógépre vár.')}catch(e){}});
  window.addEventListener('online',function(){netChip()});netChip();
- Dx.__vr=1;window.DEX_VR={game:function(){return G},startGame:startGame,enter:function(g){return enter(!!g).then(function(t){if(window.DEX_UI)window.DEX_UI.reply(t);return t})},leave:leave,active:function(){return !!(root&&root.classList.contains('on'))},work:setWork};
+ Dx.__vr=1;window.DEX_VR={game:function(){return G},startGame:startGame,enter:function(g){return enter(!!g).then(function(t){if(window.DEX_UI)window.DEX_UI.reply(t);return t})},leave:leave,uStart:uStart,uStop:uStop,ugame:function(){return U},uSpawn:uSpawn,uStep:uStep,uHit:uHit,holds:function(){return !!(M||(G&&G.paused)||(U&&U.paused))},quiet:function(t){var f=fold(t);return !!(U&&U.state==='play'&&!U.paused&&f.split(' ').length<=4&&/\b(uss|utes\w*|utom|ut|bumm|bum|bam|nyomd|nyomas|csap\w*|pofozd|kapd|rajta)\b/.test(f))},chat:chatSet,chatState:function(){return chatOn},menu:function(){return menuOpen()},menuState:function(){return M},addGame:function(id,name,start,say){GAMES.push({id:id,name:name,say:say||name,start:start})},active:function(){return !!(root&&root.classList.contains('on'))},work:setWork};
 })();
 
-</script><script src="./dex-work-controller.js"></script><script>try{if('serviceWorker' in navigator&&(location.protocol==='https:'||location.hostname==='localhost'))navigator.serviceWorker.register('sw.js').catch(function(){})}catch(e){}</script></body></html>
+</script><script>
+/* Local voice-to-WORK command router. */
+(function(){'use strict';var NAME='wdea-dex-work-v1',bc=null,pending={},seq=0;
+ try{bc=new BroadcastChannel(NAME);bc.onmessage=function(e){var d=e.data||{};if(d.type==='result'&&pending[d.requestId]){var p=pending[d.requestId];delete pending[d.requestId];clearTimeout(p.timer);p.resolve(d.text)}}}catch(e){}
+ function folded(s){return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase()}
+ function send(text){var id='cmd-'+Date.now()+'-'+(++seq);return new Promise(function(resolve){var iframe=document.querySelector('#dyVR .wk iframe');if(iframe&&iframe.contentWindow){pending[id]={resolve:resolve,timer:setTimeout(function(){delete pending[id];resolve('A WORK nem válaszolt. Nyisd meg egyszer külön fülön is, hogy betöltődjön.')},5000)};iframe.contentWindow.postMessage({channel:NAME,type:'command',requestId:id,text:text},location.origin);return}
+  if(bc){pending[id]={resolve:resolve,timer:setTimeout(function(){delete pending[id];resolve('Nem találok megnyitott WORK-fület. Nyisd meg Chrome-ban a WORK oldalt, majd próbáld újra.')},5000)};bc.postMessage({type:'command',requestId:id,text:text});return}resolve('Ezen a böngészőn a helyi WORK-kapcsolat nem érhető el.')})}
+ var Dx=window.DEX40;if(!Dx||typeof Dx.handle!=='function'||Dx.__workbridge)return;var old=Dx.handle;
+ Dx.handle=function(raw){var s=String(raw||'').trim(),f=folded(s),vr=!!(window.DEX_VR&&window.DEX_VR.active());
+  var isShow=/(mutasd|tedd|rakd|hozd|nyisd|jelenjen|tegye).{0,35}\b(work|vork|word)\b|\b(work|vork|word)\b.{0,35}\b(el[eé]|vr|mutasd|nyisd)\b/.test(f);
+  var isHide=/\b(work|vork|word)\b.{0,20}\b(el|le|zar|rejtsd|tuntesd)\b/.test(f);
+  var isWorkCmd=/^(keresd meg|keresd|kutass|talald meg|nyisd meg|nyisd ki|valaszd ki|ird at|nevezd at|csereld le|szinezd at|szinezd|valtoztasd meg|visszavonas|vond vissza a modositasokat|helyi modositasok torlese)\b/.test(f);
+  /* Védelem: a meglévő DEX-parancsok (pl. „nyisd meg…”, „keresd…”) VR-en kívül ugyanúgy működnek tovább; csak VR-ben, vagy ha a parancs kimondja a „WORK” szót, megy a WORK felé. */
+  if(!vr&&!(isWorkCmd&&/\bwork\b/.test(f)))return old.apply(this,arguments);
+  if(isShow&&window.DEX_VR){if(navigator.onLine===false||location.protocol==='file:'){window.DEX_VR.work(true);return 'Kitettem a WORK-öt a VR-nézetbe. Az offline példány csak a már letöltött fájlokkal indul.'}window.DEX_VR.work(true);return 'Kitettem a WORK-öt a VR-nézetbe.'}
+  if(isHide&&window.DEX_VR){window.DEX_VR.work(false);return 'Elrejtettem a WORK-öt.'}
+  if(isWorkCmd){if(vr){var w=document.querySelector('#dyVR .wk');if(w&&w.hidden)window.DEX_VR.work(true)}send(s).then(function(t){if(window.DEX_UI)window.DEX_UI.reply(t)});return 'Megpróbálom végrehajtani a WORK-ben.'}
+  return old.apply(this,arguments)};Dx.__workbridge=1;
+})();
+
+</script>
+<script>try{if('serviceWorker' in navigator&&(location.protocol==='https:'||location.hostname==='localhost'))navigator.serviceWorker.register('sw.js').catch(function(){})}catch(e){}</script></body></html>

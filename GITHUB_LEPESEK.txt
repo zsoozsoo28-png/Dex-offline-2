@@ -1,0 +1,28 @@
+DEX + WORK EGYÜTT, GITHUB PAGES-RE – EGYSZERŰEN
+
+Egy tárhely (repository), egy feltöltés, egy cím. A DEX a főcím, a WORK ugyanott a /work/ alatt van:
+  https://FELHASZNÁLÓNEVED.github.io/TÁRHELYNÉV/        <- DEX
+  https://FELHASZNÁLÓNEVED.github.io/TÁRHELYNÉV/work/   <- WORK
+
+EGYSZERI BEÁLLÍTÁS (a PC-n a legegyszerűbb)
+1. github.com → New repository. Név: pl. dex. Legyen Public (az ingyenes Pages-hez ez kell). Create repository.
+2. A csomagot csomagold ki a PC-n. A kibontott mappa TARTALMÁT (nem magát a mappát) húzd rá a GitHub oldalára (Add file → Upload files). Mappákat is feltölt (work). Várd meg, míg mind felkerül, aztán Commit changes.
+   Fontos, hogy a .nojekyll fájl is felmenjen (ha nem látszik a mappádban, nem baj; nélküle is működik).
+3. Settings → Pages → Source: „Deploy from a branch” → Branch: main, mappa: / (root) → Save.
+4. 1–2 perc múlva megjelenik a cím felül a Pages oldalon. Ez a te DEX-ed.
+
+TELEFONON
+5. Nyisd meg a címet Chrome-ban, internettel. Várd meg, míg betölt, aztán nyisd meg egyszer a /work/ címet is.
+6. Menü (három pont) → Hozzáadás a kezdőképernyőhöz.
+7. Engedélyezd a kamerát és a mikrofont, ha kéri.
+8. Repülő módban is próbáld ki: DEX elindul, „VR” működik, WORK megjelenik.
+
+FRISSÍTÉS: ha új csomagot kapsz, ugyanígy töltsd fel újra (felülírja a régit). A telefonon egyszer nyisd meg online, utána frissül.
+
+MI MŰKÖDIK ITT, ÉS MI NEM
+- Működik offline: DEX parancsok, VR (kamerával), szókereső, WORK megtekintése és a VR-ből adott WORK-parancsok.
+- Nincs hozzá szerver: a WORK itt demó példány, az adatai csak ezen a telefonon vannak, nincs bejelentkezés és nincs szinkron.
+- A teljes rendszer (adatbázis, admin, Ollama okos mód) a PC-s csomagban van (START_WDEA_WINDOWS.bat). A kettő külön dolog, nem zavarják egymást.
+- Public tárhely: bárki, aki ismeri a címet, megnyithatja. Titkos adatot (jelszó, kulcs) ne tegyél bele.
+
+TELEFONRÓL FELTÖLTÉS (ha mégis ott): a „Upload files” telefonról nem visz fel mappát. Előbb a gyökérfájlokat töltsd fel, utána Add file → Create new file, a név mezőbe írd: work/OLVASD_EL.txt (ettől létrejön a work mappa), majd lépj be a work mappába, és ott Upload files; ugyanígy a work/wdea-integrations mappával. PC-ről ez egy lépés.
