@@ -1043,7 +1043,23 @@ paint();})();
  $('wcBack').onclick=close;$('wcRef').onclick=function(){load()};$('wcAlert').onclick=function(){tab='reports';render()};var bl=$('wcBell');if(bl)bl.onclick=function(){tab='reports';render()};
  // CONTROL panelen belüli gombok
  var cc=$('ctlWorkStatus');if(cc&&cc.parentNode){var b1=document.createElement('button');b1.type='button';b1.id='ctlDash';b1.textContent='WORK CONTROL műszerfal';b1.onclick=function(){$('ctl').classList.remove('show');open()};cc.parentNode.insertBefore(b1,cc);
-  var b2=document.createElement('button');b2.type='button';b2.id='ctlEditor';b2.textContent='WORK szerkesztő';b2.onclick=function(){if(!ses().me){toast('Előbb lépj be adminként.');return}$('ctl').classList.remove('show');window.DEX51.openEditor&&window.DEX51.openEditor()};cc.parentNode.insertBefore(b2,cc)}
+  var b2=document.createElement('button');b2.type='button';b2.id='ctlEditor';b2.textContent='WORK szerkesztő';b2.onclick=function(){if(!ses().me){toast('Előbb lépj be adminként.');return}$('ctl').classList.remove('show');window.DEX51.openEditor&&window.DEX51.openEditor()};cc.parentNode.insertBefore(b2,cc);
+  /* WORK megjelenítése a DEX-en belül + átlépés a WORK-be */
+  function wCands(){return /\/dex\/[^\/]*$/.test(location.pathname)?['../work/index.html']:['./work/index.html','./work.html']}
+  function wFind(cb,k){k=k||0;var L=wCands();if(k>=L.length){cb(null);return}var u=new URL(L[k],location.href).href,ac=window.AbortController?new AbortController():null;
+   fetch(u,{cache:'no-store',signal:ac?ac.signal:undefined}).then(function(r){try{ac&&ac.abort()}catch(e){}if(r.status===404||r.status===410)wFind(cb,k+1);else cb(u)}).catch(function(){cb(u)})}
+  function wView(u){var o=document.getElementById('dyWV');if(o)o.remove();o=document.createElement('div');o.id='dyWV';
+   o.style.cssText='position:fixed;inset:0;z-index:2147483000;background:#020916;display:flex;flex-direction:column';
+   var bar=document.createElement('div');bar.style.cssText='display:flex;gap:8px;align-items:center;padding:8px 10px;background:#06142b;border-bottom:1px solid #1a81bd;flex:0 0 auto';
+   function bt(t,fn,c){var x=document.createElement('button');x.type='button';x.textContent=t;x.style.cssText='padding:9px 12px;border-radius:10px;border:1px solid #1a81bd;background:'+(c||'#0b2a4d')+';color:#d6f2ff;font:600 14px system-ui,sans-serif';x.onclick=fn;return x}
+   var tt=document.createElement('span');tt.textContent='WORK előnézet';tt.style.cssText='flex:1;color:#9fdcff;font:600 14px system-ui,sans-serif;text-align:center';
+   bar.appendChild(bt('← Vissza a DEX-hez',function(){o.remove()}));bar.appendChild(tt);bar.appendChild(bt('Átlépés a WORK-be ↗',function(){location.href=u},'#0f4c81'));
+   var f=document.createElement('iframe');f.src=u;f.style.cssText='flex:1 1 auto;border:0;width:100%;background:#020916';f.setAttribute('title','WORK');
+   o.appendChild(bar);o.appendChild(f);document.body.appendChild(o)}
+  function wGo(fn){wFind(function(u){if(!u){toast('A WORK oldal nincs a tárhelyen (work/index.html vagy work.html hiányzik).');return}$('ctl').classList.remove('show');fn(u)})}
+  var b3=document.createElement('button');b3.type='button';b3.id='ctlWorkView';b3.textContent='WORK megjelenítése';b3.onclick=function(){wGo(wView)};cc.parentNode.insertBefore(b3,cc);
+  var b4=document.createElement('button');b4.type='button';b4.id='ctlWorkGo';b4.textContent='Átlépés a WORK-be';b4.onclick=function(){wGo(function(u){location.href=u})};cc.parentNode.insertBefore(b4,cc);
+  window.DEX_WORKVIEW={show:function(){wGo(wView)},go:function(){wGo(function(u){location.href=u})},find:wFind}}
  var cs=$('ctlStatus');
 })();
 
@@ -2534,11 +2550,15 @@ document.body.appendChild(prof);document.body.appendChild(menu);
   hud(function(x){var e=x.querySelector('.cm');if(!e)return;e.classList.toggle('on',chatOn&&ms.length>0);e.innerHTML='';if(!chatOn)return;ms.forEach(function(m){var sp=document.createElement('span');if(m.classList.contains('me'))sp.className='me';var tx=m.textContent.trim();sp.textContent=tx.length>120?tx.slice(0,117)+'…':tx;e.appendChild(sp)})})}
  function chatSet(on){chatOn=!!on;chatRender(true)}
  function feed(){if(G&&!G.paused&&!G.done&&(++fc%3===0))skRender();if(chatOn)chatRender()}
- function workUrl(){return new URL(/\/dex\/[^\/]*$/.test(location.pathname)?'../work/index.html':'./work/index.html',location.href).href}
+ function workCands(){return /\/dex\/[^\/]*$/.test(location.pathname)?['../work/index.html']:['./work/index.html','./work.html']}
+ var workSel=null;
+ function workUrl(){return new URL(workSel||workCands()[0],location.href).href}
  var workChk=null;
+ function probeWork(list,k,done){if(k>=list.length){done(null,true);return}var u=new URL(list[k],location.href).href,ac=window.AbortController?new AbortController():null;
+  fetch(u,{cache:'no-store',signal:ac?ac.signal:undefined}).then(function(r){try{ac&&ac.abort()}catch(e){}if(r.status===404||r.status===410)probeWork(list,k+1,done);else done(list[k],false)}).catch(function(){done(list[k],false)})}
  function setWork(on){
-  if(on&&workChk!==true){var u=workUrl();
-   var ac=window.AbortController?new AbortController():null;fetch(u,{cache:'no-store',signal:ac?ac.signal:undefined}).then(function(r){try{ac&&ac.abort()}catch(e){}if(r.status===404||r.status===410){workChk=false;workOn=false;setWork2(false);try{if(window.DEX_UI)window.DEX_UI.reply('A WORK oldal nincs a tárhelyen: a work/index.html hiányzik a DEX mellől. Töltsd fel a work mappát ugyanoda, ahol a DEX van, vagy használd a PC-s szervert.')}catch(e){}}else{workChk=true;setWork2(true)}}).catch(function(){workChk=true;setWork2(true)});return}
+  if(on&&workChk!==true){
+   probeWork(workCands(),0,function(sel,missing){if(missing){workChk=false;workOn=false;setWork2(false);try{if(window.DEX_UI)window.DEX_UI.reply('A WORK oldal nincs a tárhelyen: a work/index.html (vagy a work.html) hiányzik a DEX mellől. Töltsd fel ugyanoda, ahol a DEX van, vagy használd a PC-s szervert.')}catch(e){}}else{workChk=true;workSel=sel;setWork2(true)}});return}
   setWork2(on)}
  function setWork2(on){workOn=!!on;hud(function(x){var w=x.querySelector('.wk');w.hidden=!workOn;if(workOn&&!w.firstChild){var f=document.createElement('iframe');f.src=workUrl();f.setAttribute('loading','eager');f.onload=function(){try{var d=f.contentDocument;if(d){var st=d.createElement('style');st.textContent='html,body{background:transparent!important}.app,.app-shell{background:transparent!important}';d.head.appendChild(st)}}catch(e){}};w.appendChild(f)}else if(!workOn){w.innerHTML=''}})}
  function warn(t,ms){hud(function(x){var w=x.querySelector('.warn');w.textContent=t;w.hidden=false});timers.push(setTimeout(function(){hud(function(x){x.querySelector('.warn').hidden=true})},ms||6000))}
@@ -2712,7 +2732,8 @@ function lev(a,b){var d=[],i,j;for(i=0;i<=a.length;i++)d[i]=[i];for(j=0;j<=b.len
  function menuCmd(f){
   var vr=!!(root&&root.classList.contains('on'));if(!vr)return null;
   var open=!!M,inGame=!!(G&&!G.done)||!!(U&&U.state!=='over');
-  var wantOpen=/\b(jatek|jatekok|jatekokat|jatekmappa|jatekmenu|jatek menu|jatek lista)\b/.test(f)&&!/\b(vege|ki|kilep\w*|hagyjuk|uj|kovetkezo|masik|ujra)\b/.test(f);
+  var wantOpen=/\b(jatek|jatekok|jatekokat|jatekmappa|jatekmenu|jatek menu|jatek lista)\b/.test(f)&&!/\b(vege|ki|kilep\w*|hagyjuk|uj|kovetkezo|masik|ujra)\b/.test(f)
+   &&!(G&&!G.paused&&!G.done&&/\bjatek\b/.test(f)&&!/\bjatekok\w*\b/.test(f)&&G.words.some(function(w){return fz(w)==='jatek'&&!G.found[w]}));
   if(!open){
    if(wantOpen)return menuOpen();
    if(inGame&&/^(vissza|menu|fomenu|lepj vissza|lepjunk vissza|kilepek)$/.test(f))return menuOpen();
